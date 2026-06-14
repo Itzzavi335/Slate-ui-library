@@ -811,7 +811,7 @@ function SlateUI:CreateWindow(config)
 
 		TabPages = {}
 		TabButtons = {}
-		TABS = { "Main", "Visuals", "Misc", "Settings", "Configs" }
+		TABS = {"Configs"}
 
 		for _, tname in ipairs(TABS) do
 			local function makeScroll(parent)
