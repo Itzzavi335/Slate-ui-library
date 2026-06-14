@@ -32,62 +32,9 @@ local C = {
 	White = Color3.fromRGB(255, 255, 255),
 }
 
-local THEMES = {
-	Cyan = {
-		Accent = Color3.fromRGB(0, 210, 210),
-		AccentDk = Color3.fromRGB(0, 160, 160),
-		AccentFnt = Color3.fromRGB(0, 35, 35),
-	},
-	Midnight = {
-		Accent = Color3.fromRGB(100, 100, 255),
-		AccentDk = Color3.fromRGB(70, 70, 200),
-		AccentFnt = Color3.fromRGB(15, 15, 40),
-	},
-	Obsidian = {
-		Accent = Color3.fromRGB(160, 160, 160),
-		AccentDk = Color3.fromRGB(120, 120, 120),
-		AccentFnt = Color3.fromRGB(30, 30, 30),
-	},
-	Crimson = {
-		Accent = Color3.fromRGB(220, 60, 60),
-		AccentDk = Color3.fromRGB(180, 40, 40),
-		AccentFnt = Color3.fromRGB(40, 10, 10),
-	},
-	Sunset = {
-		Accent = Color3.fromRGB(255, 140, 50),
-		AccentDk = Color3.fromRGB(210, 110, 30),
-		AccentFnt = Color3.fromRGB(45, 20, 5),
-	},
-	Desert = {
-		Accent = Color3.fromRGB(220, 190, 100),
-		AccentDk = Color3.fromRGB(180, 150, 70),
-		AccentFnt = Color3.fromRGB(40, 30, 10),
-	},
-	Arctic = {
-		Accent = Color3.fromRGB(180, 220, 255),
-		AccentDk = Color3.fromRGB(130, 180, 220),
-		AccentFnt = Color3.fromRGB(20, 35, 50),
-	},
-	Forest = {
-		Accent = Color3.fromRGB(60, 200, 80),
-		AccentDk = Color3.fromRGB(40, 160, 55),
-		AccentFnt = Color3.fromRGB(10, 35, 12),
-	},
-	Ocean = {
-		Accent = Color3.fromRGB(40, 130, 220),
-		AccentDk = Color3.fromRGB(25, 100, 180),
-		AccentFnt = Color3.fromRGB(5, 20, 40),
-	},
-	Pink = {
-		Accent = Color3.fromRGB(255, 100, 180),
-		AccentDk = Color3.fromRGB(210, 70, 140),
-		AccentFnt = Color3.fromRGB(45, 10, 25),
-	},
-}
-
 local SlateUI = {}
-local ActiveConfig = {}
 local SavedConfigs = {}
+local ActiveConfig = nil
 local RememberKeyData = nil
 local VerifiedKey = nil
 
@@ -129,15 +76,6 @@ local function draggable(win, bar)
 			end
 		end
 	end)
-end
-
-local function applyTheme(themeName)
-	local theme = THEMES[themeName]
-	if theme then
-		C.Accent = theme.Accent
-		C.AccentDk = theme.AccentDk
-		C.AccentFnt = theme.AccentFnt
-	end
 end
 
 local ScreenGui = Instance.new("ScreenGui")
@@ -306,16 +244,40 @@ local function formatTimeLeft(expiryTime)
 	end
 end
 
+local function loadSavedConfigs()
+	local success, data = pcall(function()
+		return HttpService:JSONDecode(readfile("SlateUI_Configs.json"))
+	end)
+	if success and data then
+		SavedConfigs = data
+	end
+end
+
+local function saveConfigsToFile()
+	writefile("SlateUI_Configs.json", HttpService:JSONEncode(SavedConfigs))
+end
+
+local function getConfigList()
+	local list = {}
+	for name in pairs(SavedConfigs) do
+		table.insert(list, name)
+	end
+	if #list == 0 then
+		list = { "No saved configs" }
+	end
+	table.sort(list)
+	return list
+end
+
+loadSavedConfigs()
+
 function SlateUI:CreateWindow(config)
 	local Title = config.Title or "Slate UI"
 	local WindowSize = config.Size or UDim2.fromOffset(560, 460)
-	local Theme = config.Theme or "Cyan"
 	local KeySystem = config.KeySystem or false
 	local KeySystemTitle = config.KeySystemTitle or "Authentication Required"
 	local GetKeyLink = config.GetKeyLink or "https://example.com/getkey"
 	local Keys = config.Keys or {}
-
-	applyTheme(Theme)
 
 	local w = WindowSize.X.Offset
 	local h = WindowSize.Y.Offset
@@ -752,7 +714,8 @@ function SlateUI:CreateWindow(config)
 	end
 
 	local Window = {}
-	local W, WBar, TabPages, TabButtons, TABS, switchTab, addSection, addToggle, addCheckToggle, addButton, addDropdown, addMultiDropdown, addSlider, addKeybind, addNumberInput, addTextInput, addLabel, addBadge, pg
+	local W, TabPages, TabButtons, TABS, switchTab, pg
+	local addSection, addToggle, addCheckToggle, addButton, addDropdown, addMultiDropdown, addSlider, addKeybind, addNumberInput, addTextInput, addLabel, addBadge
 
 	local function buildMainUI()
 		W = Instance.new("Frame")
@@ -765,6 +728,10 @@ function SlateUI:CreateWindow(config)
 		W.Parent = ScreenGui
 		strk(W, C.Border, 1)
 
+		local uiScale = Instance.new("UIScale")
+		uiScale.Scale = 0.7
+		uiScale.Parent = W
+
 		local top = Instance.new("Frame")
 		top.Size = UDim2.new(1, 0, 0, 2)
 		top.BackgroundColor3 = C.Accent
@@ -772,7 +739,7 @@ function SlateUI:CreateWindow(config)
 		top.ZIndex = 3
 		top.Parent = W
 
-		WBar = Instance.new("Frame")
+		local WBar = Instance.new("Frame")
 		WBar.Name = "TitleBar"
 		WBar.Size = UDim2.new(1, 0, 0, 40)
 		WBar.BackgroundTransparency = 1
@@ -844,7 +811,7 @@ function SlateUI:CreateWindow(config)
 
 		TabPages = {}
 		TabButtons = {}
-		TABS = { "Configs", "Main", "Visuals", "Misc", "Settings" }
+		TABS = { "Main", "Visuals", "Misc", "Settings", "Configs" }
 
 		for _, tname in ipairs(TABS) do
 			local function makeScroll(parent)
@@ -1641,62 +1608,78 @@ function SlateUI:CreateWindow(config)
 		end
 
 		local CoL, CoR = pg("Configs")
-		addSection(CoL, 1, "appearance")
-		addDropdown(CoL, 2, "UI Size", { "40%", "50%", "60%", "70%", "80%", "90%", "100%" }, function(v)
-			local scaleMap = { ["40%"] = 0.4, ["50%"] = 0.5, ["60%"] = 0.6, ["70%"] = 0.7, ["80%"] = 0.8, ["90%"] = 0.9, ["100%"] = 1.0 }
-			local scale = scaleMap[v] or 1.0
-			local sc = W:FindFirstChildOfClass("UIScale")
-			if not sc then
-				sc = Instance.new("UIScale")
-				sc.Parent = W
-			end
-			TweenService:Create(sc, TweenInfo.new(0.2), { Scale = scale }):Play()
-		end)
-		local themeNames = {}
-		for tn in pairs(THEMES) do
-			table.insert(themeNames, tn)
-		end
-		table.sort(themeNames)
-		addDropdown(CoL, 3, "Theme", themeNames, function(v)
-			applyTheme(v)
-			showNotification("Theme Changed", "Theme set to " .. v .. ".", "info")
-		end)
-		addKeybind(CoL, 4, "Menu Keybind", Enum.KeyCode.RightShift, function(v)
-			showNotification("Keybind Updated", "Menu keybind set to " .. v.Name .. ".", "info")
-		end)
 
 		local lastSavedLbl
-		addSection(CoR, 1, "configs")
-		addTextInput(CoR, 2, "Config Name", "Enter config name...", function(v)
-			ActiveConfig.Name = v
+		local configDropdown
+		local configList = getConfigList()
+		local savedLabel
+
+		addSection(CoL, 1, "config management")
+		addTextInput(CoL, 2, "Config Name", "Enter config name...", function(v)
+			if not ActiveConfig then
+				ActiveConfig = {}
+			end
+			ActiveConfig._name = v
 		end)
-		addButton(CoR, 3, "Create Config", "Create", function()
-			ActiveConfig = { Name = "New Config", Data = {} }
-			showNotification("Config Created", "New configuration created.", "success")
-		end)
-		addButton(CoR, 4, "Save Config", "Save", function()
-			if ActiveConfig.Name then
-				SavedConfigs[ActiveConfig.Name] = ActiveConfig
-				if lastSavedLbl then
-					lastSavedLbl.Text = "Last Saved: just now"
+
+		addButton(CoL, 3, "Save Config", "Save", function()
+			if ActiveConfig and ActiveConfig._name and ActiveConfig._name ~= "" then
+				local configToSave = {}
+				for k, v in pairs(ActiveConfig) do
+					configToSave[k] = v
 				end
-				showNotification("Config Saved", "Your configuration has been saved.", "success")
+				SavedConfigs[ActiveConfig._name] = configToSave
+				saveConfigsToFile()
+				if savedLabel then
+					savedLabel.Text = "Last Saved: " .. os.date("%H:%M:%S")
+				end
+				showNotification("Config Saved", "Config '" .. ActiveConfig._name .. "' saved successfully.", "success")
+				configList = getConfigList()
+				if configDropdown then
+					configDropdown:updateOptions(configList)
+				end
 			else
-				showNotification("Error", "No config to save.", "error")
+				showNotification("Error", "Enter a config name first.", "error")
 			end
 		end)
-		addDropdown(CoR, 5, "Load Config", { "Default", "Config 1", "Config 2" }, function(v)
-			showNotification("Config Loaded", v .. " has been loaded.", "info")
-		end)
-		addButton(CoR, 6, "Delete Config", "Delete", function()
-			showNotification("Config Deleted", "Configuration removed.", "error")
-		end)
-		addButton(CoR, 7, "Refresh Configs", "Refresh", function()
-			showNotification("Configs Refreshed", "Configuration list updated.", "info")
-		end)
-		lastSavedLbl = addLabel(CoR, 8, "Last Saved: never")
 
-		switchTab("Configs")
+		local loadDropdown
+		addSection(CoR, 1, "saved configs")
+
+		configDropdown = {
+			updateOptions = function(newOpts)
+				configList = newOpts
+			end
+		}
+
+		addDropdown(CoR, 2, "Load Config", configList, function(v)
+			if v == "No saved configs" then return end
+			if SavedConfigs[v] then
+				ActiveConfig = SavedConfigs[v]
+				showNotification("Config Loaded", "Config '" .. v .. "' loaded.", "info")
+			end
+		end)
+
+		addButton(CoR, 3, "Delete Config", "Delete", function()
+			if ActiveConfig and ActiveConfig._name and SavedConfigs[ActiveConfig._name] then
+				SavedConfigs[ActiveConfig._name] = nil
+				saveConfigsToFile()
+				ActiveConfig = nil
+				configList = getConfigList()
+				showNotification("Config Deleted", "Config removed.", "error")
+			else
+				showNotification("Error", "No config selected to delete.", "error")
+			end
+		end)
+
+		addButton(CoR, 4, "Refresh List", "Refresh", function()
+			configList = getConfigList()
+			showNotification("Refreshed", "Config list updated.", "info")
+		end)
+
+		savedLabel = addLabel(CoR, 5, "Last Saved: never")
+
+		switchTab(TABS[1])
 	end
 
 	if KeySystem and not KeySystemPassed then
@@ -1710,6 +1693,29 @@ function SlateUI:CreateWindow(config)
 		local Name = config.Name or "New Tab"
 
 		if not TabPages[Name] then
+			local CA = W:FindFirstChildWhichIsA("Frame")
+			if not CA then return Tab end
+			local contentArea
+			for _, child in ipairs(CA:GetChildren()) do
+				if child:IsA("Frame") and child.BackgroundTransparency == 1 then
+					contentArea = child
+					break
+				end
+			end
+			if not contentArea then return Tab end
+
+			local LEFT, RIGHT
+			for _, child in ipairs(CA:GetChildren()) do
+				if child:IsA("Frame") and child.Size.X.Scale == 0.5 and child.BackgroundTransparency == 1 then
+					if not LEFT then
+						LEFT = child
+					elseif not RIGHT then
+						RIGHT = child
+					end
+				end
+			end
+			if not LEFT or not RIGHT then return Tab end
+
 			local function makeScroll(parent)
 				local sf = Instance.new("ScrollingFrame")
 				sf.Size = UDim2.fromScale(1, 1)
@@ -1735,14 +1741,34 @@ function SlateUI:CreateWindow(config)
 				end)
 				return sf
 			end
-			TabPages[Name] = { L = makeScroll(W:FindFirstChildWhichIsA("Frame"):FindFirstChildWhichIsA("Frame")), R = makeScroll(W:FindFirstChildWhichIsA("Frame"):FindFirstChildWhichIsA("Frame")) }
-			table.insert(TABS, Name)
+			TabPages[Name] = { L = makeScroll(LEFT), R = makeScroll(RIGHT) }
+			table.insert(TABS, #TABS, Name)
 
-			local TabBar = W:FindFirstChildWhichIsA("Frame"):FindFirstChildWhichIsA("Frame")
-			local tabCount = #TABS
+			local TabBar
+			for _, child in ipairs(W:GetChildren()) do
+				if child:IsA("Frame") and child.Size.Y.Offset == 40 and child.Position.Y.Offset == h - 40 then
+					TabBar = child
+					break
+				end
+			end
+			if not TabBar then return Tab end
+
+			for _, btn in pairs(TabButtons) do
+				btn.Size = UDim2.new(1 / #TABS, 0, 1, 0)
+				local currentIndex = table.find(TABS, table.find(TabButtons, btn) and TABS[table.find(TabButtons, btn)])
+			end
+
+			for i, tname in ipairs(TABS) do
+				if TabButtons[tname] then
+					TabButtons[tname].Size = UDim2.new(1 / #TABS, 0, 1, 0)
+					TabButtons[tname].Position = UDim2.new((i - 1) / #TABS, 0, 0, 0)
+				end
+			end
+
 			local btn = Instance.new("TextButton")
-			btn.Size = UDim2.new(1 / tabCount, 0, 1, 0)
-			btn.Position = UDim2.new((tabCount - 1) / tabCount, 0, 0, 0)
+			btn.Size = UDim2.new(1 / #TABS, 0, 1, 0)
+			local insertIndex = #TABS - 1
+			btn.Position = UDim2.new((insertIndex - 1) / #TABS, 0, 0, 0)
 			btn.BackgroundColor3 = C.BG
 			btn.BorderSizePixel = 0
 			btn.Text = Name
@@ -1766,6 +1792,13 @@ function SlateUI:CreateWindow(config)
 			btn.MouseButton1Click:Connect(function()
 				switchTab(Name)
 			end)
+
+			for i, tname in ipairs(TABS) do
+				if TabButtons[tname] then
+					TabButtons[tname].Size = UDim2.new(1 / #TABS, 0, 1, 0)
+					TabButtons[tname].Position = UDim2.new((i - 1) / #TABS, 0, 0, 0)
+				end
+			end
 		end
 
 		local function getColumn(sectionName)
