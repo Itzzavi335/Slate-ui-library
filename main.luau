@@ -863,29 +863,40 @@ function SlateUI:CreateWindow(config)
 		end)
 	end
 
-	local function addButton(col, order, label, btnTxt, onClick)
-		local row = baseRow(col, order)
-		rowLabel(row, label)
-		local btn = Instance.new("TextButton")
-		btn.Size = UDim2.fromOffset(80, 20)
-		btn.Position = UDim2.new(1, -88, 0.5, -10)
-		btn.BackgroundColor3 = C.Accent
-		btn.BorderSizePixel = 0
-		btn.Text = btnTxt
-		btn.TextColor3 = Color3.fromRGB(0, 25, 25)
-		btn.TextSize = 11
-		btn.Font = Enum.Font.GothamBold
-		btn.ZIndex = 5
-		btn.Parent = row
-		rnd(btn, 4)
-		btn.MouseEnter:Connect(function()
-			TweenService:Create(btn, TweenInfo.new(0.12), { BackgroundColor3 = C.AccentDk }):Play()
-		end)
-		btn.MouseLeave:Connect(function()
-			TweenService:Create(btn, TweenInfo.new(0.12), { BackgroundColor3 = C.Accent }):Play()
-		end)
-		btn.MouseButton1Click:Connect(onClick or function() end)
-	end
+local function addButton(col, order, label, btnTxt, onClick)
+	local row = baseRow(col, order)
+	local lbl = rowLabel(row, label)
+	lbl.Size = UDim2.new(1, -110, 1, 0)  -- give space for the auto-sized button
+
+	local btn = Instance.new("TextButton")
+	btn.AutomaticSize = Enum.AutomaticSize.X  -- width adjusts to content
+	btn.Size = UDim2.new(0, 0, 0, 20)        -- height fixed
+	btn.AnchorPoint = Vector2.new(1, 0.5)
+	btn.Position = UDim2.new(1, -10, 0.5, 0)
+	btn.BackgroundColor3 = C.Accent
+	btn.BorderSizePixel = 0
+	btn.Text = btnTxt
+	btn.TextColor3 = Color3.fromRGB(0, 25, 25)
+	btn.TextSize = 11
+	btn.Font = Enum.Font.GothamBold
+	btn.ZIndex = 5
+	btn.Parent = row
+	rnd(btn, 4)
+
+	-- inner padding so text doesn't touch edges
+	local btnPadding = Instance.new("UIPadding")
+	btnPadding.PaddingLeft = UDim.new(0, 12)
+	btnPadding.PaddingRight = UDim.new(0, 12)
+	btnPadding.Parent = btn
+
+	btn.MouseEnter:Connect(function()
+		TweenService:Create(btn, TweenInfo.new(0.12), { BackgroundColor3 = C.AccentDk }):Play()
+	end)
+	btn.MouseLeave:Connect(function()
+		TweenService:Create(btn, TweenInfo.new(0.12), { BackgroundColor3 = C.Accent }):Play()
+	end)
+	btn.MouseButton1Click:Connect(onClick or function() end)
+end
 
 	local function makeDropList(opts)
 		local ITEM_H = 28
