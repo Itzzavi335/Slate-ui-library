@@ -714,8 +714,67 @@ function SlateUI:CreateWindow(config)
 	end
 
 	local Window = {}
-	local W, TabPages, TabButtons, TABS, switchTab, pg
-	local addSection, addToggle, addCheckToggle, addButton, addDropdown, addMultiDropdown, addSlider, addKeybind, addNumberInput, addTextInput, addLabel, addBadge
+	local W, TabPages, TabButtons, TABS, switchTab
+	local savedLabel
+	local CA, LEFT, RIGHT
+
+	local function rebuildTabBar()
+		local TabBar
+		for _, child in ipairs(W:GetChildren()) do
+			if child:IsA("Frame") and child.Size.Y.Offset == 40 and child.Position.Y.Offset == h - 40 and child.Name ~= "TitleBar" then
+				TabBar = child
+				break
+			end
+		end
+		if not TabBar then return end
+
+		for _, child in ipairs(TabBar:GetChildren()) do
+			if child:IsA("TextButton") then
+				child:Destroy()
+			end
+		end
+		TabButtons = {}
+
+		local tabCount = #TABS
+		for i, tname in ipairs(TABS) do
+			local btn = Instance.new("TextButton")
+			btn.Size = UDim2.new(1 / tabCount, 0, 1, 0)
+			btn.Position = UDim2.new((i - 1) / tabCount, 0, 0, 0)
+			btn.BackgroundColor3 = C.BG
+			btn.BorderSizePixel = 0
+			btn.Text = tname
+			btn.TextColor3 = C.TextMut
+			btn.TextSize = 12
+			btn.Font = Enum.Font.GothamBold
+			btn.ZIndex = 4
+			btn.Parent = TabBar
+
+			local bl = Instance.new("Frame")
+			bl.Name = "BorderLine"
+			bl.Size = UDim2.new(1, 0, 0, 2)
+			bl.Position = UDim2.fromOffset(0, 0)
+			bl.BackgroundColor3 = C.Accent
+			bl.BorderSizePixel = 0
+			bl.Visible = false
+			bl.ZIndex = 5
+			bl.Parent = btn
+
+			if i < tabCount then
+				local sep = Instance.new("Frame")
+				sep.Size = UDim2.new(0, 1, 1, 0)
+				sep.Position = UDim2.new(1, 0, 0, 0)
+				sep.BackgroundColor3 = C.Border
+				sep.BorderSizePixel = 0
+				sep.ZIndex = 5
+				sep.Parent = btn
+			end
+
+			TabButtons[tname] = btn
+			btn.MouseButton1Click:Connect(function()
+				switchTab(tname)
+			end)
+		end
+	end
 
 	local function buildMainUI()
 		W = Instance.new("Frame")
@@ -778,7 +837,7 @@ function SlateUI:CreateWindow(config)
 		draggable(W, WBar)
 
 		local CONTENT_H = h - 41 - 40
-		local CA = Instance.new("Frame")
+		CA = Instance.new("Frame")
 		CA.Size = UDim2.new(1, 0, 0, CONTENT_H)
 		CA.Position = UDim2.fromOffset(0, 41)
 		CA.BackgroundTransparency = 1
@@ -786,7 +845,7 @@ function SlateUI:CreateWindow(config)
 		CA.ZIndex = 3
 		CA.Parent = W
 
-		local LEFT = Instance.new("Frame")
+		LEFT = Instance.new("Frame")
 		LEFT.Size = UDim2.new(0.5, 0, 1, 0)
 		LEFT.BackgroundTransparency = 1
 		LEFT.ZIndex = 3
@@ -801,7 +860,7 @@ function SlateUI:CreateWindow(config)
 		ColDiv.ZIndex = 3
 		ColDiv.Parent = CA
 
-		local RIGHT = Instance.new("Frame")
+		RIGHT = Instance.new("Frame")
 		RIGHT.Size = UDim2.new(0.5, -1, 1, 0)
 		RIGHT.Position = UDim2.new(0.5, 1, 0, 0)
 		RIGHT.BackgroundTransparency = 1
@@ -811,36 +870,7 @@ function SlateUI:CreateWindow(config)
 
 		TabPages = {}
 		TabButtons = {}
-		TABS = {"Configs"}
-
-		for _, tname in ipairs(TABS) do
-			local function makeScroll(parent)
-				local sf = Instance.new("ScrollingFrame")
-				sf.Size = UDim2.fromScale(1, 1)
-				sf.BackgroundTransparency = 1
-				sf.BorderSizePixel = 0
-				sf.ScrollBarThickness = 2
-				sf.ScrollBarImageColor3 = C.Accent
-				sf.Visible = false
-				sf.ZIndex = 4
-				sf.Parent = parent
-				local lay = Instance.new("UIListLayout")
-				lay.Padding = UDim.new(0, 0)
-				lay.SortOrder = Enum.SortOrder.LayoutOrder
-				lay.Parent = sf
-				local pad = Instance.new("UIPadding")
-				pad.PaddingTop = UDim.new(0, 6)
-				pad.PaddingBottom = UDim.new(0, 6)
-				pad.PaddingLeft = UDim.new(0, 4)
-				pad.PaddingRight = UDim.new(0, 4)
-				pad.Parent = sf
-				lay:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-					sf.CanvasSize = UDim2.new(0, 0, 0, lay.AbsoluteContentSize.Y + 20)
-				end)
-				return sf
-			end
-			TabPages[tname] = { L = makeScroll(LEFT), R = makeScroll(RIGHT) }
-		end
+		TABS = {}
 
 		function switchTab(name)
 			for _, pg in pairs(TabPages) do
@@ -877,47 +907,33 @@ function SlateUI:CreateWindow(config)
 		TabTopLine.ZIndex = 4
 		TabTopLine.Parent = TabBar
 
-		local tabCount = #TABS
-		for i, tname in ipairs(TABS) do
-			local btn = Instance.new("TextButton")
-			btn.Size = UDim2.new(1 / tabCount, 0, 1, 0)
-			btn.Position = UDim2.new((i - 1) / tabCount, 0, 0, 0)
-			btn.BackgroundColor3 = C.BG
-			btn.BorderSizePixel = 0
-			btn.Text = tname
-			btn.TextColor3 = C.TextMut
-			btn.TextSize = 12
-			btn.Font = Enum.Font.GothamBold
-			btn.ZIndex = 4
-			btn.Parent = TabBar
-
-			local bl = Instance.new("Frame")
-			bl.Name = "BorderLine"
-			bl.Size = UDim2.new(1, 0, 0, 2)
-			bl.Position = UDim2.fromOffset(0, 0)
-			bl.BackgroundColor3 = C.Accent
-			bl.BorderSizePixel = 0
-			bl.Visible = false
-			bl.ZIndex = 5
-			bl.Parent = btn
-
-			if i < tabCount then
-				local sep = Instance.new("Frame")
-				sep.Size = UDim2.new(0, 1, 1, 0)
-				sep.Position = UDim2.new(1, 0, 0, 0)
-				sep.BackgroundColor3 = C.Border
-				sep.BorderSizePixel = 0
-				sep.ZIndex = 5
-				sep.Parent = btn
-			end
-
-			TabButtons[tname] = btn
-			btn.MouseButton1Click:Connect(function()
-				switchTab(tname)
+		local function makeScroll(parent)
+			local sf = Instance.new("ScrollingFrame")
+			sf.Size = UDim2.fromScale(1, 1)
+			sf.BackgroundTransparency = 1
+			sf.BorderSizePixel = 0
+			sf.ScrollBarThickness = 2
+			sf.ScrollBarImageColor3 = C.Accent
+			sf.Visible = false
+			sf.ZIndex = 4
+			sf.Parent = parent
+			local lay = Instance.new("UIListLayout")
+			lay.Padding = UDim.new(0, 0)
+			lay.SortOrder = Enum.SortOrder.LayoutOrder
+			lay.Parent = sf
+			local pad = Instance.new("UIPadding")
+			pad.PaddingTop = UDim.new(0, 6)
+			pad.PaddingBottom = UDim.new(0, 6)
+			pad.PaddingLeft = UDim.new(0, 4)
+			pad.PaddingRight = UDim.new(0, 4)
+			pad.Parent = sf
+			lay:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+				sf.CanvasSize = UDim2.new(0, 0, 0, lay.AbsoluteContentSize.Y + 20)
 			end)
+			return sf
 		end
 
-		function addSection(col, order, title)
+		local function addSection(col, order, title)
 			local row = Instance.new("Frame")
 			row.Size = UDim2.new(1, 0, 0, 26)
 			row.BackgroundTransparency = 1
@@ -986,7 +1002,7 @@ function SlateUI:CreateWindow(config)
 			return l
 		end
 
-		function addToggle(col, order, label, default, onChange)
+		local function addToggle(col, order, label, default, onChange)
 			local row = baseRow(col, order)
 			rowLabel(row, label)
 			local state = default or false
@@ -1027,7 +1043,7 @@ function SlateUI:CreateWindow(config)
 			end)
 		end
 
-		function addCheckToggle(col, order, label, default, onChange)
+		local function addCheckToggle(col, order, label, default, onChange)
 			local row = baseRow(col, order)
 			rowLabel(row, label)
 			local state = default or false
@@ -1064,7 +1080,7 @@ function SlateUI:CreateWindow(config)
 			end)
 		end
 
-		function addButton(col, order, label, btnTxt, onClick)
+		local function addButton(col, order, label, btnTxt, onClick)
 			local row = baseRow(col, order)
 			rowLabel(row, label)
 			local btn = Instance.new("TextButton")
@@ -1156,7 +1172,7 @@ function SlateUI:CreateWindow(config)
 			return db, selL, arr
 		end
 
-		function addDropdown(col, order, label, opts, onChange)
+		local function addDropdown(col, order, label, opts, onChange)
 			local row = baseRow(col, order)
 			rowLabel(row, label)
 			local db, selL, arr = makeDropBtn(row)
@@ -1238,7 +1254,7 @@ function SlateUI:CreateWindow(config)
 			end)
 		end
 
-		function addMultiDropdown(col, order, label, opts, onChange)
+		local function addMultiDropdown(col, order, label, opts, onChange)
 			local row = baseRow(col, order)
 			rowLabel(row, label)
 			local db, selL, arr = makeDropBtn(row)
@@ -1341,7 +1357,7 @@ function SlateUI:CreateWindow(config)
 			end)
 		end
 
-		function addSlider(col, order, label, mn, mx, def, onChange)
+		local function addSlider(col, order, label, mn, mx, def, onChange)
 			local row = baseRow(col, order)
 			row.Size = UDim2.new(1, 0, 0, ROW_H + 16)
 			local val = def or mn
@@ -1422,7 +1438,7 @@ function SlateUI:CreateWindow(config)
 			end)
 		end
 
-		function addKeybind(col, order, label, default, onChange)
+		local function addKeybind(col, order, label, default, onChange)
 			local row = baseRow(col, order)
 			rowLabel(row, label)
 			local bound = default or Enum.KeyCode.Unknown
@@ -1466,7 +1482,7 @@ function SlateUI:CreateWindow(config)
 			end)
 		end
 
-		function addNumberInput(col, order, label, default, onChange)
+		local function addNumberInput(col, order, label, default, onChange)
 			local row = baseRow(col, order)
 			rowLabel(row, label)
 
@@ -1511,7 +1527,7 @@ function SlateUI:CreateWindow(config)
 			end)
 		end
 
-		function addTextInput(col, order, label, ph, onChange)
+		local function addTextInput(col, order, label, ph, onChange)
 			local row = baseRow(col, order)
 			rowLabel(row, label)
 
@@ -1550,7 +1566,7 @@ function SlateUI:CreateWindow(config)
 			end)
 		end
 
-		function addLabel(col, order, text)
+		local function addLabel(col, order, text)
 			local row = baseRow(col, order)
 			local l = Instance.new("TextLabel")
 			l.Size = UDim2.new(1, -20, 1, 0)
@@ -1567,7 +1583,7 @@ function SlateUI:CreateWindow(config)
 			return l
 		end
 
-		function addBadge(col, order, label, badgeTxt, badgeCol)
+		local function addBadge(col, order, label, badgeTxt, badgeCol)
 			local row = baseRow(col, order)
 			rowLabel(row, label)
 			local bc = badgeCol or C.Accent
@@ -1603,83 +1619,80 @@ function SlateUI:CreateWindow(config)
 			bl.Parent = badge
 		end
 
-		function pg(tab)
-			return TabPages[tab].L, TabPages[tab].R
+		local function addConfigsTab()
+			TABS[#TABS + 1] = "Configs"
+			TabPages["Configs"] = { L = makeScroll(LEFT), R = makeScroll(RIGHT) }
+
+			local CoL = TabPages["Configs"].L
+			local CoR = TabPages["Configs"].R
+
+			addSection(CoL, 1, "appearance")
+			addDropdown(CoL, 2, "UI Size", { "40%", "50%", "60%", "70%", "80%", "90%", "100%" }, function(v)
+				local scaleMap = { ["40%"] = 0.4, ["50%"] = 0.5, ["60%"] = 0.6, ["70%"] = 0.7, ["80%"] = 0.8, ["90%"] = 0.9, ["100%"] = 1.0 }
+				local scale = scaleMap[v] or 0.7
+				local sc = W:FindFirstChildOfClass("UIScale")
+				if sc then
+					TweenService:Create(sc, TweenInfo.new(0.2), { Scale = scale }):Play()
+				end
+			end)
+
+			addSection(CoL, 3, "config management")
+			addTextInput(CoL, 4, "Config Name", "Enter config name...", function(v)
+				if not ActiveConfig then
+					ActiveConfig = {}
+				end
+				ActiveConfig._name = v
+			end)
+
+			addButton(CoL, 5, "Save Config", "Save", function()
+				if ActiveConfig and ActiveConfig._name and ActiveConfig._name ~= "" then
+					local configToSave = {}
+					for k, v in pairs(ActiveConfig) do
+						configToSave[k] = v
+					end
+					SavedConfigs[ActiveConfig._name] = configToSave
+					saveConfigsToFile()
+					if savedLabel then
+						savedLabel.Text = "Last Saved: " .. os.date("%H:%M:%S")
+					end
+					showNotification("Config Saved", "Config '" .. ActiveConfig._name .. "' saved successfully.", "success")
+				else
+					showNotification("Error", "Enter a config name first.", "error")
+				end
+			end)
+
+			addSection(CoR, 1, "saved configs")
+
+			local configList = getConfigList()
+			addDropdown(CoR, 2, "Load Config", configList, function(v)
+				if v == "No saved configs" then return end
+				if SavedConfigs[v] then
+					ActiveConfig = SavedConfigs[v]
+					showNotification("Config Loaded", "Config '" .. v .. "' loaded.", "info")
+				end
+			end)
+
+			addButton(CoR, 3, "Delete Config", "Delete", function()
+				if ActiveConfig and ActiveConfig._name and SavedConfigs[ActiveConfig._name] then
+					SavedConfigs[ActiveConfig._name] = nil
+					saveConfigsToFile()
+					ActiveConfig = nil
+					showNotification("Config Deleted", "Config removed.", "error")
+				else
+					showNotification("Error", "No config selected to delete.", "error")
+				end
+			end)
+
+			addButton(CoR, 4, "Refresh List", "Refresh", function()
+				showNotification("Refreshed", "Config list updated.", "info")
+			end)
+
+			savedLabel = addLabel(CoR, 5, "Last Saved: never")
 		end
 
-		local CoL, CoR = pg("Configs")
-
-		local lastSavedLbl
-		local configDropdown
-		local configList = getConfigList()
-		local savedLabel
-
-		addSection(CoL, 1, "config management")
-		addTextInput(CoL, 2, "Config Name", "Enter config name...", function(v)
-			if not ActiveConfig then
-				ActiveConfig = {}
-			end
-			ActiveConfig._name = v
-		end)
-
-		addButton(CoL, 3, "Save Config", "Save", function()
-			if ActiveConfig and ActiveConfig._name and ActiveConfig._name ~= "" then
-				local configToSave = {}
-				for k, v in pairs(ActiveConfig) do
-					configToSave[k] = v
-				end
-				SavedConfigs[ActiveConfig._name] = configToSave
-				saveConfigsToFile()
-				if savedLabel then
-					savedLabel.Text = "Last Saved: " .. os.date("%H:%M:%S")
-				end
-				showNotification("Config Saved", "Config '" .. ActiveConfig._name .. "' saved successfully.", "success")
-				configList = getConfigList()
-				if configDropdown then
-					configDropdown:updateOptions(configList)
-				end
-			else
-				showNotification("Error", "Enter a config name first.", "error")
-			end
-		end)
-
-		local loadDropdown
-		addSection(CoR, 1, "saved configs")
-
-		configDropdown = {
-			updateOptions = function(newOpts)
-				configList = newOpts
-			end
-		}
-
-		addDropdown(CoR, 2, "Load Config", configList, function(v)
-			if v == "No saved configs" then return end
-			if SavedConfigs[v] then
-				ActiveConfig = SavedConfigs[v]
-				showNotification("Config Loaded", "Config '" .. v .. "' loaded.", "info")
-			end
-		end)
-
-		addButton(CoR, 3, "Delete Config", "Delete", function()
-			if ActiveConfig and ActiveConfig._name and SavedConfigs[ActiveConfig._name] then
-				SavedConfigs[ActiveConfig._name] = nil
-				saveConfigsToFile()
-				ActiveConfig = nil
-				configList = getConfigList()
-				showNotification("Config Deleted", "Config removed.", "error")
-			else
-				showNotification("Error", "No config selected to delete.", "error")
-			end
-		end)
-
-		addButton(CoR, 4, "Refresh List", "Refresh", function()
-			configList = getConfigList()
-			showNotification("Refreshed", "Config list updated.", "info")
-		end)
-
-		savedLabel = addLabel(CoR, 5, "Last Saved: never")
-
-		switchTab(TABS[1])
+		addConfigsTab()
+		rebuildTabBar()
+		switchTab("Configs")
 	end
 
 	if KeySystem and not KeySystemPassed then
@@ -1689,180 +1702,100 @@ function SlateUI:CreateWindow(config)
 	end
 
 	function Window:CreateTabButton(config)
-		local Tab = {}
 		local Name = config.Name or "New Tab"
-
-		if not TabPages[Name] then
-			local CA = W:FindFirstChildWhichIsA("Frame")
-			if not CA then return Tab end
-			local contentArea
-			for _, child in ipairs(CA:GetChildren()) do
-				if child:IsA("Frame") and child.BackgroundTransparency == 1 then
-					contentArea = child
-					break
-				end
-			end
-			if not contentArea then return Tab end
-
-			local LEFT, RIGHT
-			for _, child in ipairs(CA:GetChildren()) do
-				if child:IsA("Frame") and child.Size.X.Scale == 0.5 and child.BackgroundTransparency == 1 then
-					if not LEFT then
-						LEFT = child
-					elseif not RIGHT then
-						RIGHT = child
-					end
-				end
-			end
-			if not LEFT or not RIGHT then return Tab end
-
-			local function makeScroll(parent)
-				local sf = Instance.new("ScrollingFrame")
-				sf.Size = UDim2.fromScale(1, 1)
-				sf.BackgroundTransparency = 1
-				sf.BorderSizePixel = 0
-				sf.ScrollBarThickness = 2
-				sf.ScrollBarImageColor3 = C.Accent
-				sf.Visible = false
-				sf.ZIndex = 4
-				sf.Parent = parent
-				local lay = Instance.new("UIListLayout")
-				lay.Padding = UDim.new(0, 0)
-				lay.SortOrder = Enum.SortOrder.LayoutOrder
-				lay.Parent = sf
-				local pad = Instance.new("UIPadding")
-				pad.PaddingTop = UDim.new(0, 6)
-				pad.PaddingBottom = UDim.new(0, 6)
-				pad.PaddingLeft = UDim.new(0, 4)
-				pad.PaddingRight = UDim.new(0, 4)
-				pad.Parent = sf
-				lay:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-					sf.CanvasSize = UDim2.new(0, 0, 0, lay.AbsoluteContentSize.Y + 20)
-				end)
-				return sf
-			end
-			TabPages[Name] = { L = makeScroll(LEFT), R = makeScroll(RIGHT) }
-			table.insert(TABS, #TABS, Name)
-
-			local TabBar
-			for _, child in ipairs(W:GetChildren()) do
-				if child:IsA("Frame") and child.Size.Y.Offset == 40 and child.Position.Y.Offset == h - 40 then
-					TabBar = child
-					break
-				end
-			end
-			if not TabBar then return Tab end
-
-			for _, btn in pairs(TabButtons) do
-				btn.Size = UDim2.new(1 / #TABS, 0, 1, 0)
-				local currentIndex = table.find(TABS, table.find(TabButtons, btn) and TABS[table.find(TabButtons, btn)])
-			end
-
-			for i, tname in ipairs(TABS) do
-				if TabButtons[tname] then
-					TabButtons[tname].Size = UDim2.new(1 / #TABS, 0, 1, 0)
-					TabButtons[tname].Position = UDim2.new((i - 1) / #TABS, 0, 0, 0)
-				end
-			end
-
-			local btn = Instance.new("TextButton")
-			btn.Size = UDim2.new(1 / #TABS, 0, 1, 0)
-			local insertIndex = #TABS - 1
-			btn.Position = UDim2.new((insertIndex - 1) / #TABS, 0, 0, 0)
-			btn.BackgroundColor3 = C.BG
-			btn.BorderSizePixel = 0
-			btn.Text = Name
-			btn.TextColor3 = C.TextMut
-			btn.TextSize = 12
-			btn.Font = Enum.Font.GothamBold
-			btn.ZIndex = 4
-			btn.Parent = TabBar
-
-			local bl = Instance.new("Frame")
-			bl.Name = "BorderLine"
-			bl.Size = UDim2.new(1, 0, 0, 2)
-			bl.Position = UDim2.fromOffset(0, 0)
-			bl.BackgroundColor3 = C.Accent
-			bl.BorderSizePixel = 0
-			bl.Visible = false
-			bl.ZIndex = 5
-			bl.Parent = btn
-
-			TabButtons[Name] = btn
-			btn.MouseButton1Click:Connect(function()
-				switchTab(Name)
-			end)
-
-			for i, tname in ipairs(TABS) do
-				if TabButtons[tname] then
-					TabButtons[tname].Size = UDim2.new(1 / #TABS, 0, 1, 0)
-					TabButtons[tname].Position = UDim2.new((i - 1) / #TABS, 0, 0, 0)
-				end
-			end
+		if TabPages[Name] then
+			return Window._createTabMethods(Name)
 		end
 
+		local function makeScroll(parent)
+			local sf = Instance.new("ScrollingFrame")
+			sf.Size = UDim2.fromScale(1, 1)
+			sf.BackgroundTransparency = 1
+			sf.BorderSizePixel = 0
+			sf.ScrollBarThickness = 2
+			sf.ScrollBarImageColor3 = C.Accent
+			sf.Visible = false
+			sf.ZIndex = 4
+			sf.Parent = parent
+			local lay = Instance.new("UIListLayout")
+			lay.Padding = UDim.new(0, 0)
+			lay.SortOrder = Enum.SortOrder.LayoutOrder
+			lay.Parent = sf
+			local pad = Instance.new("UIPadding")
+			pad.PaddingTop = UDim.new(0, 6)
+			pad.PaddingBottom = UDim.new(0, 6)
+			pad.PaddingLeft = UDim.new(0, 4)
+			pad.PaddingRight = UDim.new(0, 4)
+			pad.Parent = sf
+			lay:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+				sf.CanvasSize = UDim2.new(0, 0, 0, lay.AbsoluteContentSize.Y + 20)
+			end)
+			return sf
+		end
+
+		TabPages[Name] = { L = makeScroll(LEFT), R = makeScroll(RIGHT) }
+		table.insert(TABS, #TABS, Name)
+		rebuildTabBar()
+		switchTab(Name)
+
+		return Window._createTabMethods(Name)
+	end
+
+	function Window._createTabMethods(tabName)
+		local Tab = {}
 		local function getColumn(sectionName)
 			if sectionName == "Right" then
-				return TabPages[Name].R
+				return TabPages[tabName].R
 			end
-			return TabPages[Name].L
+			return TabPages[tabName].L
 		end
 
 		function Tab:Button(config)
-			local sectionName = config.Section or "Left"
-			addButton(getColumn(sectionName), #getColumn(sectionName):GetChildren() + 1, config.Name, config.Name or "Button", config.Callback or function() end)
+			addButton(getColumn(config.Section or "Left"), #getColumn(config.Section or "Left"):GetChildren() + 1, config.Name, config.Name or "Button", config.Callback or function() end)
 			return Tab
 		end
 
 		function Tab:Toggle(config)
-			local sectionName = config.Section or "Left"
-			addToggle(getColumn(sectionName), #getColumn(sectionName):GetChildren() + 1, config.Name, config.Default or false, config.Callback or function() end)
+			addToggle(getColumn(config.Section or "Left"), #getColumn(config.Section or "Left"):GetChildren() + 1, config.Name, config.Default or false, config.Callback or function() end)
 			return Tab
 		end
 
 		function Tab:Checkbox(config)
-			local sectionName = config.Section or "Left"
-			addCheckToggle(getColumn(sectionName), #getColumn(sectionName):GetChildren() + 1, config.Name, config.Default or false, config.Callback or function() end)
+			addCheckToggle(getColumn(config.Section or "Left"), #getColumn(config.Section or "Left"):GetChildren() + 1, config.Name, config.Default or false, config.Callback or function() end)
 			return Tab
 		end
 
 		function Tab:Input(config)
-			local sectionName = config.Section or "Left"
-			addTextInput(getColumn(sectionName), #getColumn(sectionName):GetChildren() + 1, config.Name, config.Placeholder, config.Callback or function() end)
+			addTextInput(getColumn(config.Section or "Left"), #getColumn(config.Section or "Left"):GetChildren() + 1, config.Name, config.Placeholder, config.Callback or function() end)
 			return Tab
 		end
 
 		function Tab:NumberInput(config)
-			local sectionName = config.Section or "Left"
-			addNumberInput(getColumn(sectionName), #getColumn(sectionName):GetChildren() + 1, config.Name, config.Default, config.Callback or function() end)
+			addNumberInput(getColumn(config.Section or "Left"), #getColumn(config.Section or "Left"):GetChildren() + 1, config.Name, config.Default, config.Callback or function() end)
 			return Tab
 		end
 
 		function Tab:Keybind(config)
-			local sectionName = config.Section or "Left"
-			addKeybind(getColumn(sectionName), #getColumn(sectionName):GetChildren() + 1, config.Name, config.Default or Enum.KeyCode.Unknown, config.Callback or function() end)
+			addKeybind(getColumn(config.Section or "Left"), #getColumn(config.Section or "Left"):GetChildren() + 1, config.Name, config.Default or Enum.KeyCode.Unknown, config.Callback or function() end)
 			return Tab
 		end
 
 		function Tab:Dropdown(config)
-			local sectionName = config.Section or "Left"
 			if config.Multi then
-				addMultiDropdown(getColumn(sectionName), #getColumn(sectionName):GetChildren() + 1, config.Name, config.Options or {}, config.Callback or function() end)
+				addMultiDropdown(getColumn(config.Section or "Left"), #getColumn(config.Section or "Left"):GetChildren() + 1, config.Name, config.Options or {}, config.Callback or function() end)
 			else
-				addDropdown(getColumn(sectionName), #getColumn(sectionName):GetChildren() + 1, config.Name, config.Options or {}, config.Callback or function() end)
+				addDropdown(getColumn(config.Section or "Left"), #getColumn(config.Section or "Left"):GetChildren() + 1, config.Name, config.Options or {}, config.Callback or function() end)
 			end
 			return Tab
 		end
 
 		function Tab:Slider(config)
-			local sectionName = config.Section or "Left"
-			addSlider(getColumn(sectionName), #getColumn(sectionName):GetChildren() + 1, config.Name, config.Min or 0, config.Max or 100, config.Default or 0, config.Callback or function() end)
+			addSlider(getColumn(config.Section or "Left"), #getColumn(config.Section or "Left"):GetChildren() + 1, config.Name, config.Min or 0, config.Max or 100, config.Default or 0, config.Callback or function() end)
 			return Tab
 		end
 
 		function Tab:Label(config)
-			local sectionName = config.Section or "Left"
-			addLabel(getColumn(sectionName), #getColumn(sectionName):GetChildren() + 1, config.Content or "")
+			addLabel(getColumn(config.Section or "Left"), #getColumn(config.Section or "Left"):GetChildren() + 1, config.Content or "")
 			return Tab
 		end
 
