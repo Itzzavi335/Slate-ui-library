@@ -718,6 +718,661 @@ function SlateUI:CreateWindow(config)
 	local savedLabel
 	local CA, LEFT, RIGHT
 
+	-- Element-adding functions defined here to be accessible everywhere
+	local ROW_H = 28
+
+	local function addSection(col, order, title)
+		local row = Instance.new("Frame")
+		row.Size = UDim2.new(1, 0, 0, 26)
+		row.BackgroundTransparency = 1
+		row.LayoutOrder = order
+		row.ZIndex = 4
+		row.Parent = col
+
+		local line = Instance.new("Frame")
+		line.Size = UDim2.new(1, -20, 0, 1)
+		line.Position = UDim2.new(0, 10, 0.5, 0)
+		line.BackgroundColor3 = C.Border
+		line.BorderSizePixel = 0
+		line.ZIndex = 4
+		line.Parent = row
+
+		local pill = Instance.new("Frame")
+		pill.AutomaticSize = Enum.AutomaticSize.X
+		pill.Size = UDim2.new(0, 0, 1, 0)
+		pill.AnchorPoint = Vector2.new(0.5, 0.5)
+		pill.Position = UDim2.fromScale(0.5, 0.5)
+		pill.BackgroundColor3 = C.BG
+		pill.BorderSizePixel = 0
+		pill.ZIndex = 5
+		pill.Parent = row
+		local pp = Instance.new("UIPadding")
+		pp.PaddingLeft = UDim.new(0, 6)
+		pp.PaddingRight = UDim.new(0, 6)
+		pp.Parent = pill
+
+		local t = Instance.new("TextLabel")
+		t.AutomaticSize = Enum.AutomaticSize.X
+		t.Size = UDim2.new(0, 0, 1, 0)
+		t.BackgroundTransparency = 1
+		t.Text = title
+		t.TextColor3 = C.Accent
+		t.TextSize = 10
+		t.Font = Enum.Font.GothamBold
+		t.ZIndex = 6
+		t.Parent = pill
+	end
+
+	local function baseRow(col, order, rowH)
+		local row = Instance.new("Frame")
+		row.Size = UDim2.new(1, 0, 0, rowH or ROW_H)
+		row.BackgroundTransparency = 1
+		row.BorderSizePixel = 0
+		row.LayoutOrder = order
+		row.ZIndex = 4
+		row.Parent = col
+		return row
+	end
+
+	local function rowLabel(row, text)
+		local l = Instance.new("TextLabel")
+		l.Size = UDim2.new(0.55, 0, 1, 0)
+		l.Position = UDim2.fromOffset(10, 0)
+		l.BackgroundTransparency = 1
+		l.Text = text
+		l.TextColor3 = C.TextPri
+		l.TextSize = 12
+		l.Font = Enum.Font.Gotham
+		l.TextXAlignment = Enum.TextXAlignment.Left
+		l.ZIndex = 5
+		l.Parent = row
+		return l
+	end
+
+	local function addToggle(col, order, label, default, onChange)
+		local row = baseRow(col, order)
+		rowLabel(row, label)
+		local state = default or false
+
+		local bg = Instance.new("Frame")
+		bg.Size = UDim2.fromOffset(34, 18)
+		bg.Position = UDim2.new(1, -42, 0.5, -9)
+		bg.BackgroundColor3 = state and C.Accent or C.ToggleOff
+		bg.BorderSizePixel = 0
+		bg.ZIndex = 5
+		bg.Parent = row
+		rnd(bg, 99)
+		local bgs = strk(bg, state and C.AccentDk or C.Border, 1)
+
+		local kn = Instance.new("Frame")
+		kn.Size = UDim2.fromOffset(12, 12)
+		kn.Position = state and UDim2.fromOffset(19, 3) or UDim2.fromOffset(3, 3)
+		kn.BackgroundColor3 = C.White
+		kn.BorderSizePixel = 0
+		kn.ZIndex = 6
+		kn.Parent = bg
+		rnd(kn, 99)
+
+		local tb = Instance.new("TextButton")
+		tb.Size = UDim2.fromScale(1, 1)
+		tb.BackgroundTransparency = 1
+		tb.Text = ""
+		tb.ZIndex = 7
+		tb.Parent = bg
+		tb.MouseButton1Click:Connect(function()
+			state = not state
+			TweenService:Create(bg, TweenInfo.new(0.18), { BackgroundColor3 = state and C.Accent or C.ToggleOff }):Play()
+			TweenService:Create(bgs, TweenInfo.new(0.18), { Color = state and C.AccentDk or C.Border }):Play()
+			TweenService:Create(kn, TweenInfo.new(0.18, Enum.EasingStyle.Quad), { Position = state and UDim2.fromOffset(19, 3) or UDim2.fromOffset(3, 3) }):Play()
+			if onChange then onChange(state) end
+		end)
+	end
+
+	local function addCheckToggle(col, order, label, default, onChange)
+		local row = baseRow(col, order)
+		rowLabel(row, label)
+		local state = default or false
+
+		local box = Instance.new("TextButton")
+		box.Size = UDim2.fromOffset(16, 16)
+		box.Position = UDim2.new(1, -26, 0.5, -8)
+		box.BackgroundColor3 = state and C.AccentFnt or C.BG3
+		box.BorderSizePixel = 0
+		box.Text = ""
+		box.ZIndex = 5
+		box.Parent = row
+		rnd(box, 3)
+		local bs = strk(box, state and C.Accent or C.Border, 1)
+
+		local cm = Instance.new("ImageLabel")
+		cm.Size = UDim2.fromOffset(10, 10)
+		cm.Position = UDim2.fromOffset(3, 3)
+		cm.BackgroundTransparency = 1
+		cm.Image = "rbxassetid://6031068421"
+		cm.ImageColor3 = C.Accent
+		cm.Visible = state
+		cm.ZIndex = 6
+		cm.Parent = box
+
+		box.MouseButton1Click:Connect(function()
+			state = not state
+			cm.Visible = state
+			bs.Color = state and C.Accent or C.Border
+			TweenService:Create(box, TweenInfo.new(0.15), { BackgroundColor3 = state and C.AccentFnt or C.BG3 }):Play()
+			if onChange then onChange(state) end
+		end)
+	end
+
+	local function addButton(col, order, label, btnTxt, onClick)
+		local row = baseRow(col, order)
+		rowLabel(row, label)
+		local btn = Instance.new("TextButton")
+		btn.Size = UDim2.fromOffset(80, 20)
+		btn.Position = UDim2.new(1, -88, 0.5, -10)
+		btn.BackgroundColor3 = C.Accent
+		btn.BorderSizePixel = 0
+		btn.Text = btnTxt
+		btn.TextColor3 = Color3.fromRGB(0, 25, 25)
+		btn.TextSize = 11
+		btn.Font = Enum.Font.GothamBold
+		btn.ZIndex = 5
+		btn.Parent = row
+		rnd(btn, 4)
+		btn.MouseEnter:Connect(function()
+			TweenService:Create(btn, TweenInfo.new(0.12), { BackgroundColor3 = C.AccentDk }):Play()
+		end)
+		btn.MouseLeave:Connect(function()
+			TweenService:Create(btn, TweenInfo.new(0.12), { BackgroundColor3 = C.Accent }):Play()
+		end)
+		btn.MouseButton1Click:Connect(onClick or function() end)
+	end
+
+	local function makeDropList(opts)
+		local ITEM_H = 28
+		local lf = Instance.new("Frame")
+		lf.Size = UDim2.fromOffset(148, #opts * ITEM_H + 8)
+		lf.BackgroundColor3 = C.BG2
+		lf.BorderSizePixel = 0
+		lf.Visible = false
+		lf.ZIndex = 100
+		lf.Parent = ScreenGui
+		rnd(lf, 6)
+		local lfs = Instance.new("UIStroke")
+		lfs.Color = C.Border
+		lfs.Thickness = 1
+		lfs.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		lfs.Parent = lf
+
+		local ll = Instance.new("UIListLayout")
+		ll.SortOrder = Enum.SortOrder.LayoutOrder
+		ll.Padding = UDim.new(0, 0)
+		ll.Parent = lf
+		local lpad = Instance.new("UIPadding")
+		lpad.PaddingTop = UDim.new(0, 4)
+		lpad.PaddingBottom = UDim.new(0, 4)
+		lpad.Parent = lf
+
+		return lf, ll, ITEM_H
+	end
+
+	local function positionList(lf, db)
+		local abs = db.AbsolutePosition
+		local sz = db.AbsoluteSize
+		lf.Position = UDim2.fromOffset(abs.X, abs.Y + sz.Y + 4)
+	end
+
+	local function makeDropBtn(row)
+		local db = Instance.new("TextButton")
+		db.Size = UDim2.fromOffset(148, 24)
+		db.Position = UDim2.new(1, -156, 0.5, -12)
+		db.BackgroundColor3 = C.BG3
+		db.BorderSizePixel = 0
+		db.Text = ""
+		db.ZIndex = 5
+		db.Parent = row
+		rnd(db, 5)
+
+		local selL = Instance.new("TextLabel")
+		selL.Size = UDim2.new(1, -26, 1, 0)
+		selL.Position = UDim2.fromOffset(9, 0)
+		selL.BackgroundTransparency = 1
+		selL.TextColor3 = C.TextPri
+		selL.TextSize = 11
+		selL.Font = Enum.Font.Gotham
+		selL.TextXAlignment = Enum.TextXAlignment.Left
+		selL.ZIndex = 6
+		selL.Parent = db
+
+		local arr = Instance.new("ImageLabel")
+		arr.Size = UDim2.fromOffset(12, 12)
+		arr.Position = UDim2.new(1, -18, 0.5, -6)
+		arr.BackgroundTransparency = 1
+		arr.Image = ICONS.ArrowDown
+		arr.ImageColor3 = C.TextMut
+		arr.ZIndex = 6
+		arr.Parent = db
+
+		return db, selL, arr
+	end
+
+	local function addDropdown(col, order, label, opts, onChange)
+		local row = baseRow(col, order)
+		rowLabel(row, label)
+		local db, selL, arr = makeDropBtn(row)
+		selL.Text = opts[1] or "Select..."
+		local lf, ll, ITEM_H = makeDropList(opts)
+		local open = false
+		local selected = opts[1]
+
+		for idx, opt in ipairs(opts) do
+			local it = Instance.new("TextButton")
+			it.Size = UDim2.new(1, 0, 0, ITEM_H)
+			it.BackgroundColor3 = C.BG2
+			it.BackgroundTransparency = 1
+			it.BorderSizePixel = 0
+			it.Text = ""
+			it.LayoutOrder = idx
+			it.ZIndex = 101
+			it.Parent = lf
+
+			local tick = Instance.new("Frame")
+			tick.Size = UDim2.fromOffset(3, 14)
+			tick.Position = UDim2.fromOffset(0, 7)
+			tick.BackgroundColor3 = C.Accent
+			tick.BorderSizePixel = 0
+			tick.Visible = (opt == selected)
+			tick.ZIndex = 102
+			tick.Parent = it
+			rnd(tick, 2)
+
+			local il = Instance.new("TextLabel")
+			il.Size = UDim2.new(1, -16, 1, 0)
+			il.Position = UDim2.fromOffset(12, 0)
+			il.BackgroundTransparency = 1
+			il.Text = opt
+			il.TextColor3 = opt == selected and C.Accent or C.TextPri
+			il.TextSize = 11
+			il.Font = Enum.Font.Gotham
+			il.TextXAlignment = Enum.TextXAlignment.Left
+			il.ZIndex = 102
+			il.Parent = it
+
+			it.MouseEnter:Connect(function()
+				TweenService:Create(it, TweenInfo.new(0.1), { BackgroundTransparency = 0, BackgroundColor3 = C.BG3 }):Play()
+			end)
+			it.MouseLeave:Connect(function()
+				TweenService:Create(it, TweenInfo.new(0.1), { BackgroundTransparency = 1 }):Play()
+			end)
+			it.MouseButton1Click:Connect(function()
+				selected = opt
+				selL.Text = opt
+				lf.Visible = false
+				open = false
+				for _, ch in ipairs(lf:GetChildren()) do
+					if ch:IsA("TextButton") then
+						local t = ch:FindFirstChildWhichIsA("TextLabel")
+						local tk = ch:FindFirstChildOfClass("Frame")
+						if t then t.TextColor3 = t.Text == selected and C.Accent or C.TextPri end
+						if tk then tk.Visible = t and t.Text == selected end
+					end
+				end
+				TweenService:Create(arr, TweenInfo.new(0.15), { Rotation = 0 }):Play()
+				if onChange then onChange(selected) end
+			end)
+		end
+
+		db.MouseButton1Click:Connect(function()
+			open = not open
+			if open then positionList(lf, db) end
+			lf.Visible = open
+			TweenService:Create(arr, TweenInfo.new(0.15), { Rotation = open and 180 or 0 }):Play()
+		end)
+	end
+
+	local function addMultiDropdown(col, order, label, opts, onChange)
+		local row = baseRow(col, order)
+		rowLabel(row, label)
+		local db, selL, arr = makeDropBtn(row)
+		selL.Text = "None selected"
+		local lf, ll, ITEM_H = makeDropList(opts)
+		local open = false
+		local selected = {}
+
+		local function refreshLabel()
+			local keys = {}
+			for k in pairs(selected) do table.insert(keys, k) end
+			if #keys == 0 then selL.Text = "None"
+			elseif #keys == 1 then selL.Text = keys[1]
+			else selL.Text = keys[1] .. " (+" .. (#keys-1) .. ")" end
+		end
+
+		for idx, opt in ipairs(opts) do
+			local it = Instance.new("TextButton")
+			it.Size = UDim2.new(1, 0, 0, ITEM_H)
+			it.BackgroundColor3 = C.BG2
+			it.BackgroundTransparency = 1
+			it.BorderSizePixel = 0
+			it.Text = ""
+			it.LayoutOrder = idx
+			it.ZIndex = 101
+			it.Parent = lf
+
+			local box = Instance.new("Frame")
+			box.Size = UDim2.fromOffset(13, 13)
+			box.Position = UDim2.new(1, -22, 0.5, -6)
+			box.BackgroundColor3 = C.BG3
+			box.BorderSizePixel = 0
+			box.ZIndex = 102
+			box.Parent = it
+			rnd(box, 3)
+			local bks = strk(box, C.Border, 1)
+
+			local chk = Instance.new("ImageLabel")
+			chk.Size = UDim2.fromOffset(9, 9)
+			chk.Position = UDim2.fromOffset(2, 2)
+			chk.BackgroundTransparency = 1
+			chk.Image = "rbxassetid://6031068421"
+			chk.ImageColor3 = C.Accent
+			chk.Visible = false
+			chk.ZIndex = 103
+			chk.Parent = box
+
+			local il = Instance.new("TextLabel")
+			il.Size = UDim2.new(1, -32, 1, 0)
+			il.Position = UDim2.fromOffset(10, 0)
+			il.BackgroundTransparency = 1
+			il.Text = opt
+			il.TextColor3 = C.TextPri
+			il.TextSize = 11
+			il.Font = Enum.Font.Gotham
+			il.TextXAlignment = Enum.TextXAlignment.Left
+			il.ZIndex = 102
+			il.Parent = it
+
+			it.MouseEnter:Connect(function()
+				TweenService:Create(it, TweenInfo.new(0.1), { BackgroundTransparency = 0, BackgroundColor3 = C.BG3 }):Play()
+			end)
+			it.MouseLeave:Connect(function()
+				TweenService:Create(it, TweenInfo.new(0.1), { BackgroundTransparency = 1 }):Play()
+			end)
+			it.MouseButton1Click:Connect(function()
+				if selected[opt] then
+					selected[opt] = nil
+					chk.Visible = false
+					bks.Color = C.Border
+					TweenService:Create(box, TweenInfo.new(0.12), { BackgroundColor3 = C.BG3 }):Play()
+					il.TextColor3 = C.TextPri
+				else
+					selected[opt] = true
+					chk.Visible = true
+					bks.Color = C.Accent
+					TweenService:Create(box, TweenInfo.new(0.12), { BackgroundColor3 = C.AccentFnt }):Play()
+					il.TextColor3 = C.Accent
+				end
+				refreshLabel()
+				if onChange then onChange(selected) end
+			end)
+		end
+
+		db.MouseButton1Click:Connect(function()
+			open = not open
+			if open then positionList(lf, db) end
+			lf.Visible = open
+			TweenService:Create(arr, TweenInfo.new(0.15), { Rotation = open and 180 or 0 }):Play()
+		end)
+	end
+
+	local function addSlider(col, order, label, mn, mx, def, onChange)
+		local row = baseRow(col, order)
+		row.Size = UDim2.new(1, 0, 0, ROW_H + 16)
+		local val = def or mn
+
+		local tl = Instance.new("TextLabel")
+		tl.Size = UDim2.new(0.6, 0, 0, 18)
+		tl.Position = UDim2.fromOffset(10, 4)
+		tl.BackgroundTransparency = 1
+		tl.Text = label
+		tl.TextColor3 = C.TextPri
+		tl.TextSize = 12
+		tl.Font = Enum.Font.Gotham
+		tl.TextXAlignment = Enum.TextXAlignment.Left
+		tl.ZIndex = 5
+		tl.Parent = row
+
+		local vl = Instance.new("TextLabel")
+		vl.Size = UDim2.new(0.35, 0, 0, 18)
+		vl.Position = UDim2.new(0.62, 0, 0, 4)
+		vl.BackgroundTransparency = 1
+		vl.Text = tostring(val)
+		vl.TextColor3 = C.Accent
+		vl.TextSize = 11
+		vl.Font = Enum.Font.GothamBold
+		vl.TextXAlignment = Enum.TextXAlignment.Right
+		vl.ZIndex = 5
+		vl.Parent = row
+
+		local tr = Instance.new("Frame")
+		tr.Size = UDim2.new(1, -20, 0, 3)
+		tr.Position = UDim2.fromOffset(10, 24)
+		tr.BackgroundColor3 = C.BG3
+		tr.BorderSizePixel = 0
+		tr.ZIndex = 5
+		tr.Parent = row
+		rnd(tr, 99)
+		strk(tr, C.Border, 1)
+
+		local fi = Instance.new("Frame")
+		fi.Size = UDim2.new((val - mn) / (mx - mn), 0, 1, 0)
+		fi.BackgroundColor3 = C.Accent
+		fi.BorderSizePixel = 0
+		fi.ZIndex = 6
+		fi.Parent = tr
+		rnd(fi, 99)
+
+		local sliding = false
+		local function upd(ax)
+			local p = math.clamp((ax - tr.AbsolutePosition.X) / tr.AbsoluteSize.X, 0, 1)
+			val = math.round(mn + p * (mx - mn))
+			vl.Text = tostring(val)
+			fi.Size = UDim2.new(p, 0, 1, 0)
+			if onChange then onChange(val) end
+		end
+
+		local tb = Instance.new("TextButton")
+		tb.Size = UDim2.new(1, 0, 0, 18)
+		tb.Position = UDim2.fromOffset(0, -7)
+		tb.BackgroundTransparency = 1
+		tb.Text = ""
+		tb.ZIndex = 8
+		tb.Parent = tr
+		tb.MouseButton1Down:Connect(function(x)
+			sliding = true
+			upd(x)
+		end)
+		UIS.InputEnded:Connect(function(i)
+			if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+				sliding = false
+			end
+		end)
+		UIS.InputChanged:Connect(function(i)
+			if sliding and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then
+				upd(i.Position.X)
+			end
+		end)
+	end
+
+	local function addKeybind(col, order, label, default, onChange)
+		local row = baseRow(col, order)
+		rowLabel(row, label)
+		local bound = default or Enum.KeyCode.Unknown
+		local waiting = false
+
+		local kb = Instance.new("TextButton")
+		kb.Size = UDim2.fromOffset(100, 20)
+		kb.Position = UDim2.new(1, -108, 0.5, -10)
+		kb.BackgroundColor3 = C.BG3
+		kb.BorderSizePixel = 0
+		kb.Text = bound == Enum.KeyCode.Unknown and "None" or bound.Name
+		kb.TextColor3 = C.Accent
+		kb.TextSize = 11
+		kb.Font = Enum.Font.GothamBold
+		kb.ZIndex = 5
+		kb.Parent = row
+		rnd(kb, 4)
+		strk(kb, C.Border, 1)
+
+		kb.MouseButton1Click:Connect(function()
+			if waiting then return end
+			waiting = true
+			kb.Text = "Press..."
+			kb.TextColor3 = C.TextMut
+		end)
+		UIS.InputBegan:Connect(function(i, gp)
+			if not waiting or gp then return end
+			if i.UserInputType == Enum.UserInputType.Keyboard then
+				bound = i.KeyCode
+				kb.Text = bound.Name
+				kb.TextColor3 = C.Accent
+				waiting = false
+				if onChange then onChange(bound) end
+			end
+		end)
+	end
+
+	local function addNumberInput(col, order, label, default, onChange)
+		local row = baseRow(col, order)
+		rowLabel(row, label)
+
+		local nb = Instance.new("Frame")
+		nb.Size = UDim2.fromOffset(80, 22)
+		nb.Position = UDim2.new(1, -88, 0.5, -11)
+		nb.BackgroundColor3 = C.BG3
+		nb.BorderSizePixel = 0
+		nb.ZIndex = 5
+		nb.Parent = row
+		rnd(nb, 4)
+		local ns = strk(nb, C.Border, 1)
+
+		local nt = Instance.new("TextBox")
+		nt.Size = UDim2.new(1, -8, 1, 0)
+		nt.Position = UDim2.fromOffset(4, 0)
+		nt.BackgroundTransparency = 1
+		nt.Text = tostring(default or 0)
+		nt.PlaceholderText = "0"
+		nt.PlaceholderColor3 = C.TextMut
+		nt.TextColor3 = C.TextPri
+		nt.TextSize = 12
+		nt.Font = Enum.Font.GothamBold
+		nt.TextXAlignment = Enum.TextXAlignment.Center
+		nt.ClearTextOnFocus = false
+		nt.ZIndex = 6
+		nt.Parent = nb
+		nt.Focused:Connect(function()
+			TweenService:Create(ns, TweenInfo.new(0.15), { Color = C.Accent, Thickness = 1.2 }):Play()
+		end)
+		nt.FocusLost:Connect(function()
+			TweenService:Create(ns, TweenInfo.new(0.15), { Color = C.Border, Thickness = 1 }):Play()
+			local n = tonumber(nt.Text)
+			if not n then
+				nt.Text = tostring(default or 0)
+				return
+			end
+			nt.Text = tostring(n)
+			if onChange then onChange(n) end
+		end)
+	end
+
+	local function addTextInput(col, order, label, ph, onChange)
+		local row = baseRow(col, order)
+		rowLabel(row, label)
+
+		local nb = Instance.new("Frame")
+		nb.Size = UDim2.fromOffset(120, 22)
+		nb.Position = UDim2.new(1, -128, 0.5, -11)
+		nb.BackgroundColor3 = C.BG3
+		nb.BorderSizePixel = 0
+		nb.ZIndex = 5
+		nb.Parent = row
+		rnd(nb, 4)
+		local ns = strk(nb, C.Border, 1)
+
+		local tb = Instance.new("TextBox")
+		tb.Size = UDim2.new(1, -8, 1, 0)
+		tb.Position = UDim2.fromOffset(4, 0)
+		tb.BackgroundTransparency = 1
+		tb.Text = ""
+		tb.PlaceholderText = ph or "..."
+		tb.PlaceholderColor3 = C.TextMut
+		tb.TextColor3 = C.TextPri
+		tb.TextSize = 11
+		tb.Font = Enum.Font.Gotham
+		tb.TextXAlignment = Enum.TextXAlignment.Left
+		tb.ClearTextOnFocus = false
+		tb.ZIndex = 6
+		tb.Parent = nb
+		tb.Focused:Connect(function()
+			TweenService:Create(ns, TweenInfo.new(0.15), { Color = C.Accent, Thickness = 1.2 }):Play()
+		end)
+		tb.FocusLost:Connect(function()
+			TweenService:Create(ns, TweenInfo.new(0.15), { Color = C.Border, Thickness = 1 }):Play()
+			if onChange then onChange(tb.Text) end
+		end)
+	end
+
+	local function addLabel(col, order, text)
+		local row = baseRow(col, order)
+		local l = Instance.new("TextLabel")
+		l.Size = UDim2.new(1, -20, 1, 0)
+		l.Position = UDim2.fromOffset(10, 0)
+		l.BackgroundTransparency = 1
+		l.Text = text
+		l.TextColor3 = C.TextMut
+		l.TextSize = 11
+		l.Font = Enum.Font.Gotham
+		l.TextXAlignment = Enum.TextXAlignment.Left
+		l.TextWrapped = true
+		l.ZIndex = 5
+		l.Parent = row
+		return l
+	end
+
+	local function addBadge(col, order, label, badgeTxt, badgeCol)
+		local row = baseRow(col, order)
+		rowLabel(row, label)
+		local bc = badgeCol or C.Accent
+
+		local badge = Instance.new("Frame")
+		badge.AutomaticSize = Enum.AutomaticSize.X
+		badge.Size = UDim2.new(0, 0, 0, 18)
+		badge.AnchorPoint = Vector2.new(1, 0.5)
+		badge.Position = UDim2.new(1, -10, 0.5, 0)
+		badge.BackgroundColor3 = Color3.new(bc.R * 0.12, bc.G * 0.12, bc.B * 0.12)
+		badge.BorderSizePixel = 0
+		badge.ZIndex = 5
+		badge.Parent = row
+		rnd(badge, 99)
+		local bst = Instance.new("UIStroke")
+		bst.Color = bc
+		bst.Thickness = 1
+		bst.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		bst.Parent = badge
+		local bpad = Instance.new("UIPadding")
+		bpad.PaddingLeft = UDim.new(0, 7)
+		bpad.PaddingRight = UDim.new(0, 7)
+		bpad.Parent = badge
+		local bl = Instance.new("TextLabel")
+		bl.AutomaticSize = Enum.AutomaticSize.X
+		bl.Size = UDim2.new(0, 0, 1, 0)
+		bl.BackgroundTransparency = 1
+		bl.Text = badgeTxt
+		bl.TextColor3 = bc
+		bl.TextSize = 10
+		bl.Font = Enum.Font.GothamBold
+		bl.ZIndex = 6
+		bl.Parent = badge
+	end
+
+	-- Now buildMainUI uses the above functions
 	local function rebuildTabBar()
 		local TabBar
 		for _, child in ipairs(W:GetChildren()) do
@@ -933,692 +1588,6 @@ function SlateUI:CreateWindow(config)
 			return sf
 		end
 
-		local function addSection(col, order, title)
-			local row = Instance.new("Frame")
-			row.Size = UDim2.new(1, 0, 0, 26)
-			row.BackgroundTransparency = 1
-			row.LayoutOrder = order
-			row.ZIndex = 4
-			row.Parent = col
-
-			local line = Instance.new("Frame")
-			line.Size = UDim2.new(1, -20, 0, 1)
-			line.Position = UDim2.new(0, 10, 0.5, 0)
-			line.BackgroundColor3 = C.Border
-			line.BorderSizePixel = 0
-			line.ZIndex = 4
-			line.Parent = row
-
-			local pill = Instance.new("Frame")
-			pill.AutomaticSize = Enum.AutomaticSize.X
-			pill.Size = UDim2.new(0, 0, 1, 0)
-			pill.AnchorPoint = Vector2.new(0.5, 0.5)
-			pill.Position = UDim2.fromScale(0.5, 0.5)
-			pill.BackgroundColor3 = C.BG
-			pill.BorderSizePixel = 0
-			pill.ZIndex = 5
-			pill.Parent = row
-			local pp = Instance.new("UIPadding")
-			pp.PaddingLeft = UDim.new(0, 6)
-			pp.PaddingRight = UDim.new(0, 6)
-			pp.Parent = pill
-
-			local t = Instance.new("TextLabel")
-			t.AutomaticSize = Enum.AutomaticSize.X
-			t.Size = UDim2.new(0, 0, 1, 0)
-			t.BackgroundTransparency = 1
-			t.Text = title
-			t.TextColor3 = C.Accent
-			t.TextSize = 10
-			t.Font = Enum.Font.GothamBold
-			t.ZIndex = 6
-			t.Parent = pill
-		end
-
-		local ROW_H = 28
-		local function baseRow(col, order, rowH)
-			local row = Instance.new("Frame")
-			row.Size = UDim2.new(1, 0, 0, rowH or ROW_H)
-			row.BackgroundTransparency = 1
-			row.BorderSizePixel = 0
-			row.LayoutOrder = order
-			row.ZIndex = 4
-			row.Parent = col
-			return row
-		end
-
-		local function rowLabel(row, text)
-			local l = Instance.new("TextLabel")
-			l.Size = UDim2.new(0.55, 0, 1, 0)
-			l.Position = UDim2.fromOffset(10, 0)
-			l.BackgroundTransparency = 1
-			l.Text = text
-			l.TextColor3 = C.TextPri
-			l.TextSize = 12
-			l.Font = Enum.Font.Gotham
-			l.TextXAlignment = Enum.TextXAlignment.Left
-			l.ZIndex = 5
-			l.Parent = row
-			return l
-		end
-
-		local function addToggle(col, order, label, default, onChange)
-			local row = baseRow(col, order)
-			rowLabel(row, label)
-			local state = default or false
-
-			local bg = Instance.new("Frame")
-			bg.Size = UDim2.fromOffset(34, 18)
-			bg.Position = UDim2.new(1, -42, 0.5, -9)
-			bg.BackgroundColor3 = state and C.Accent or C.ToggleOff
-			bg.BorderSizePixel = 0
-			bg.ZIndex = 5
-			bg.Parent = row
-			rnd(bg, 99)
-			local bgs = strk(bg, state and C.AccentDk or C.Border, 1)
-
-			local kn = Instance.new("Frame")
-			kn.Size = UDim2.fromOffset(12, 12)
-			kn.Position = state and UDim2.fromOffset(19, 3) or UDim2.fromOffset(3, 3)
-			kn.BackgroundColor3 = C.White
-			kn.BorderSizePixel = 0
-			kn.ZIndex = 6
-			kn.Parent = bg
-			rnd(kn, 99)
-
-			local tb = Instance.new("TextButton")
-			tb.Size = UDim2.fromScale(1, 1)
-			tb.BackgroundTransparency = 1
-			tb.Text = ""
-			tb.ZIndex = 7
-			tb.Parent = bg
-			tb.MouseButton1Click:Connect(function()
-				state = not state
-				TweenService:Create(bg, TweenInfo.new(0.18), { BackgroundColor3 = state and C.Accent or C.ToggleOff }):Play()
-				TweenService:Create(bgs, TweenInfo.new(0.18), { Color = state and C.AccentDk or C.Border }):Play()
-				TweenService:Create(kn, TweenInfo.new(0.18, Enum.EasingStyle.Quad), { Position = state and UDim2.fromOffset(19, 3) or UDim2.fromOffset(3, 3) }):Play()
-				if onChange then
-					onChange(state)
-				end
-			end)
-		end
-
-		local function addCheckToggle(col, order, label, default, onChange)
-			local row = baseRow(col, order)
-			rowLabel(row, label)
-			local state = default or false
-
-			local box = Instance.new("TextButton")
-			box.Size = UDim2.fromOffset(16, 16)
-			box.Position = UDim2.new(1, -26, 0.5, -8)
-			box.BackgroundColor3 = state and C.AccentFnt or C.BG3
-			box.BorderSizePixel = 0
-			box.Text = ""
-			box.ZIndex = 5
-			box.Parent = row
-			rnd(box, 3)
-			local bs = strk(box, state and C.Accent or C.Border, 1)
-
-			local cm = Instance.new("ImageLabel")
-			cm.Size = UDim2.fromOffset(10, 10)
-			cm.Position = UDim2.fromOffset(3, 3)
-			cm.BackgroundTransparency = 1
-			cm.Image = "rbxassetid://6031068421"
-			cm.ImageColor3 = C.Accent
-			cm.Visible = state
-			cm.ZIndex = 6
-			cm.Parent = box
-
-			box.MouseButton1Click:Connect(function()
-				state = not state
-				cm.Visible = state
-				bs.Color = state and C.Accent or C.Border
-				TweenService:Create(box, TweenInfo.new(0.15), { BackgroundColor3 = state and C.AccentFnt or C.BG3 }):Play()
-				if onChange then
-					onChange(state)
-				end
-			end)
-		end
-
-		local function addButton(col, order, label, btnTxt, onClick)
-			local row = baseRow(col, order)
-			rowLabel(row, label)
-			local btn = Instance.new("TextButton")
-			btn.Size = UDim2.fromOffset(80, 20)
-			btn.Position = UDim2.new(1, -88, 0.5, -10)
-			btn.BackgroundColor3 = C.Accent
-			btn.BorderSizePixel = 0
-			btn.Text = btnTxt
-			btn.TextColor3 = Color3.fromRGB(0, 25, 25)
-			btn.TextSize = 11
-			btn.Font = Enum.Font.GothamBold
-			btn.ZIndex = 5
-			btn.Parent = row
-			rnd(btn, 4)
-			btn.MouseEnter:Connect(function()
-				TweenService:Create(btn, TweenInfo.new(0.12), { BackgroundColor3 = C.AccentDk }):Play()
-			end)
-			btn.MouseLeave:Connect(function()
-				TweenService:Create(btn, TweenInfo.new(0.12), { BackgroundColor3 = C.Accent }):Play()
-			end)
-			btn.MouseButton1Click:Connect(onClick or function() end)
-		end
-
-		local function makeDropList(opts)
-			local ITEM_H = 28
-			local lf = Instance.new("Frame")
-			lf.Size = UDim2.fromOffset(148, #opts * ITEM_H + 8)
-			lf.BackgroundColor3 = C.BG2
-			lf.BorderSizePixel = 0
-			lf.Visible = false
-			lf.ZIndex = 100
-			lf.Parent = ScreenGui
-			rnd(lf, 6)
-			local lfs = Instance.new("UIStroke")
-			lfs.Color = C.Border
-			lfs.Thickness = 1
-			lfs.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-			lfs.Parent = lf
-
-			local ll = Instance.new("UIListLayout")
-			ll.SortOrder = Enum.SortOrder.LayoutOrder
-			ll.Padding = UDim.new(0, 0)
-			ll.Parent = lf
-			local lpad = Instance.new("UIPadding")
-			lpad.PaddingTop = UDim.new(0, 4)
-			lpad.PaddingBottom = UDim.new(0, 4)
-			lpad.Parent = lf
-
-			return lf, ll, ITEM_H
-		end
-
-		local function positionList(lf, db)
-			local abs = db.AbsolutePosition
-			local sz = db.AbsoluteSize
-			lf.Position = UDim2.fromOffset(abs.X, abs.Y + sz.Y + 4)
-		end
-
-		local function makeDropBtn(row)
-			local db = Instance.new("TextButton")
-			db.Size = UDim2.fromOffset(148, 24)
-			db.Position = UDim2.new(1, -156, 0.5, -12)
-			db.BackgroundColor3 = C.BG3
-			db.BorderSizePixel = 0
-			db.Text = ""
-			db.ZIndex = 5
-			db.Parent = row
-			rnd(db, 5)
-
-			local selL = Instance.new("TextLabel")
-			selL.Size = UDim2.new(1, -26, 1, 0)
-			selL.Position = UDim2.fromOffset(9, 0)
-			selL.BackgroundTransparency = 1
-			selL.TextColor3 = C.TextPri
-			selL.TextSize = 11
-			selL.Font = Enum.Font.Gotham
-			selL.TextXAlignment = Enum.TextXAlignment.Left
-			selL.ZIndex = 6
-			selL.Parent = db
-
-			local arr = Instance.new("ImageLabel")
-			arr.Size = UDim2.fromOffset(12, 12)
-			arr.Position = UDim2.new(1, -18, 0.5, -6)
-			arr.BackgroundTransparency = 1
-			arr.Image = ICONS.ArrowDown
-			arr.ImageColor3 = C.TextMut
-			arr.ZIndex = 6
-			arr.Parent = db
-
-			return db, selL, arr
-		end
-
-		local function addDropdown(col, order, label, opts, onChange)
-			local row = baseRow(col, order)
-			rowLabel(row, label)
-			local db, selL, arr = makeDropBtn(row)
-			selL.Text = opts[1] or "Select..."
-			local lf, ll, ITEM_H = makeDropList(opts)
-			local open = false
-			local selected = opts[1]
-
-			for idx, opt in ipairs(opts) do
-				local it = Instance.new("TextButton")
-				it.Size = UDim2.new(1, 0, 0, ITEM_H)
-				it.BackgroundColor3 = C.BG2
-				it.BackgroundTransparency = 1
-				it.BorderSizePixel = 0
-				it.Text = ""
-				it.LayoutOrder = idx
-				it.ZIndex = 101
-				it.Parent = lf
-
-				local tick = Instance.new("Frame")
-				tick.Size = UDim2.fromOffset(3, 14)
-				tick.Position = UDim2.fromOffset(0, 7)
-				tick.BackgroundColor3 = C.Accent
-				tick.BorderSizePixel = 0
-				tick.Visible = (opt == selected)
-				tick.ZIndex = 102
-				tick.Parent = it
-				rnd(tick, 2)
-
-				local il = Instance.new("TextLabel")
-				il.Size = UDim2.new(1, -16, 1, 0)
-				il.Position = UDim2.fromOffset(12, 0)
-				il.BackgroundTransparency = 1
-				il.Text = opt
-				il.TextColor3 = opt == selected and C.Accent or C.TextPri
-				il.TextSize = 11
-				il.Font = Enum.Font.Gotham
-				il.TextXAlignment = Enum.TextXAlignment.Left
-				il.ZIndex = 102
-				il.Parent = it
-
-				it.MouseEnter:Connect(function()
-					TweenService:Create(it, TweenInfo.new(0.1), { BackgroundTransparency = 0, BackgroundColor3 = C.BG3 }):Play()
-				end)
-				it.MouseLeave:Connect(function()
-					TweenService:Create(it, TweenInfo.new(0.1), { BackgroundTransparency = 1 }):Play()
-				end)
-				it.MouseButton1Click:Connect(function()
-					selected = opt
-					selL.Text = opt
-					lf.Visible = false
-					open = false
-					for _, ch in ipairs(lf:GetChildren()) do
-						if ch:IsA("TextButton") then
-							local t = ch:FindFirstChildWhichIsA("TextLabel")
-							local tk = ch:FindFirstChildOfClass("Frame")
-							if t then
-								t.TextColor3 = t.Text == selected and C.Accent or C.TextPri
-							end
-							if tk then
-								tk.Visible = t and t.Text == selected
-							end
-						end
-					end
-					TweenService:Create(arr, TweenInfo.new(0.15), { Rotation = 0 }):Play()
-					if onChange then
-						onChange(selected)
-					end
-				end)
-			end
-
-			db.MouseButton1Click:Connect(function()
-				open = not open
-				if open then
-					positionList(lf, db)
-				end
-				lf.Visible = open
-				TweenService:Create(arr, TweenInfo.new(0.15), { Rotation = open and 180 or 0 }):Play()
-			end)
-		end
-
-		local function addMultiDropdown(col, order, label, opts, onChange)
-			local row = baseRow(col, order)
-			rowLabel(row, label)
-			local db, selL, arr = makeDropBtn(row)
-			selL.Text = "None selected"
-			local lf, ll, ITEM_H = makeDropList(opts)
-			local open = false
-			local selected = {}
-
-			local function refreshLabel()
-				local keys = {}
-				for k in pairs(selected) do
-					table.insert(keys, k)
-				end
-				if #keys == 0 then
-					selL.Text = "None"
-				elseif #keys == 1 then
-					selL.Text = keys[1]
-				else
-					selL.Text = keys[1] .. " (+" .. (#keys - 1) .. ")"
-				end
-			end
-
-			for idx, opt in ipairs(opts) do
-				local it = Instance.new("TextButton")
-				it.Size = UDim2.new(1, 0, 0, ITEM_H)
-				it.BackgroundColor3 = C.BG2
-				it.BackgroundTransparency = 1
-				it.BorderSizePixel = 0
-				it.Text = ""
-				it.LayoutOrder = idx
-				it.ZIndex = 101
-				it.Parent = lf
-
-				local box = Instance.new("Frame")
-				box.Size = UDim2.fromOffset(13, 13)
-				box.Position = UDim2.new(1, -22, 0.5, -6)
-				box.BackgroundColor3 = C.BG3
-				box.BorderSizePixel = 0
-				box.ZIndex = 102
-				box.Parent = it
-				rnd(box, 3)
-				local bks = strk(box, C.Border, 1)
-
-				local chk = Instance.new("ImageLabel")
-				chk.Size = UDim2.fromOffset(9, 9)
-				chk.Position = UDim2.fromOffset(2, 2)
-				chk.BackgroundTransparency = 1
-				chk.Image = "rbxassetid://6031068421"
-				chk.ImageColor3 = C.Accent
-				chk.Visible = false
-				chk.ZIndex = 103
-				chk.Parent = box
-
-				local il = Instance.new("TextLabel")
-				il.Size = UDim2.new(1, -32, 1, 0)
-				il.Position = UDim2.fromOffset(10, 0)
-				il.BackgroundTransparency = 1
-				il.Text = opt
-				il.TextColor3 = C.TextPri
-				il.TextSize = 11
-				il.Font = Enum.Font.Gotham
-				il.TextXAlignment = Enum.TextXAlignment.Left
-				il.ZIndex = 102
-				il.Parent = it
-
-				it.MouseEnter:Connect(function()
-					TweenService:Create(it, TweenInfo.new(0.1), { BackgroundTransparency = 0, BackgroundColor3 = C.BG3 }):Play()
-				end)
-				it.MouseLeave:Connect(function()
-					TweenService:Create(it, TweenInfo.new(0.1), { BackgroundTransparency = 1 }):Play()
-				end)
-				it.MouseButton1Click:Connect(function()
-					if selected[opt] then
-						selected[opt] = nil
-						chk.Visible = false
-						bks.Color = C.Border
-						TweenService:Create(box, TweenInfo.new(0.12), { BackgroundColor3 = C.BG3 }):Play()
-						il.TextColor3 = C.TextPri
-					else
-						selected[opt] = true
-						chk.Visible = true
-						bks.Color = C.Accent
-						TweenService:Create(box, TweenInfo.new(0.12), { BackgroundColor3 = C.AccentFnt }):Play()
-						il.TextColor3 = C.Accent
-					end
-					refreshLabel()
-					if onChange then
-						onChange(selected)
-					end
-				end)
-			end
-
-			db.MouseButton1Click:Connect(function()
-				open = not open
-				if open then
-					positionList(lf, db)
-				end
-				lf.Visible = open
-				TweenService:Create(arr, TweenInfo.new(0.15), { Rotation = open and 180 or 0 }):Play()
-			end)
-		end
-
-		local function addSlider(col, order, label, mn, mx, def, onChange)
-			local row = baseRow(col, order)
-			row.Size = UDim2.new(1, 0, 0, ROW_H + 16)
-			local val = def or mn
-
-			local tl = Instance.new("TextLabel")
-			tl.Size = UDim2.new(0.6, 0, 0, 18)
-			tl.Position = UDim2.fromOffset(10, 4)
-			tl.BackgroundTransparency = 1
-			tl.Text = label
-			tl.TextColor3 = C.TextPri
-			tl.TextSize = 12
-			tl.Font = Enum.Font.Gotham
-			tl.TextXAlignment = Enum.TextXAlignment.Left
-			tl.ZIndex = 5
-			tl.Parent = row
-
-			local vl = Instance.new("TextLabel")
-			vl.Size = UDim2.new(0.35, 0, 0, 18)
-			vl.Position = UDim2.new(0.62, 0, 0, 4)
-			vl.BackgroundTransparency = 1
-			vl.Text = tostring(val)
-			vl.TextColor3 = C.Accent
-			vl.TextSize = 11
-			vl.Font = Enum.Font.GothamBold
-			vl.TextXAlignment = Enum.TextXAlignment.Right
-			vl.ZIndex = 5
-			vl.Parent = row
-
-			local tr = Instance.new("Frame")
-			tr.Size = UDim2.new(1, -20, 0, 3)
-			tr.Position = UDim2.fromOffset(10, 24)
-			tr.BackgroundColor3 = C.BG3
-			tr.BorderSizePixel = 0
-			tr.ZIndex = 5
-			tr.Parent = row
-			rnd(tr, 99)
-			strk(tr, C.Border, 1)
-
-			local fi = Instance.new("Frame")
-			fi.Size = UDim2.new((val - mn) / (mx - mn), 0, 1, 0)
-			fi.BackgroundColor3 = C.Accent
-			fi.BorderSizePixel = 0
-			fi.ZIndex = 6
-			fi.Parent = tr
-			rnd(fi, 99)
-
-			local sliding = false
-			local function upd(ax)
-				local p = math.clamp((ax - tr.AbsolutePosition.X) / tr.AbsoluteSize.X, 0, 1)
-				val = math.round(mn + p * (mx - mn))
-				vl.Text = tostring(val)
-				fi.Size = UDim2.new(p, 0, 1, 0)
-				if onChange then
-					onChange(val)
-				end
-			end
-
-			local tb = Instance.new("TextButton")
-			tb.Size = UDim2.new(1, 0, 0, 18)
-			tb.Position = UDim2.fromOffset(0, -7)
-			tb.BackgroundTransparency = 1
-			tb.Text = ""
-			tb.ZIndex = 8
-			tb.Parent = tr
-			tb.MouseButton1Down:Connect(function(x)
-				sliding = true
-				upd(x)
-			end)
-			UIS.InputEnded:Connect(function(i)
-				if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
-					sliding = false
-				end
-			end)
-			UIS.InputChanged:Connect(function(i)
-				if sliding and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then
-					upd(i.Position.X)
-				end
-			end)
-		end
-
-		local function addKeybind(col, order, label, default, onChange)
-			local row = baseRow(col, order)
-			rowLabel(row, label)
-			local bound = default or Enum.KeyCode.Unknown
-			local waiting = false
-
-			local kb = Instance.new("TextButton")
-			kb.Size = UDim2.fromOffset(100, 20)
-			kb.Position = UDim2.new(1, -108, 0.5, -10)
-			kb.BackgroundColor3 = C.BG3
-			kb.BorderSizePixel = 0
-			kb.Text = bound == Enum.KeyCode.Unknown and "None" or bound.Name
-			kb.TextColor3 = C.Accent
-			kb.TextSize = 11
-			kb.Font = Enum.Font.GothamBold
-			kb.ZIndex = 5
-			kb.Parent = row
-			rnd(kb, 4)
-			strk(kb, C.Border, 1)
-
-			kb.MouseButton1Click:Connect(function()
-				if waiting then
-					return
-				end
-				waiting = true
-				kb.Text = "Press..."
-				kb.TextColor3 = C.TextMut
-			end)
-			UIS.InputBegan:Connect(function(i, gp)
-				if not waiting or gp then
-					return
-				end
-				if i.UserInputType == Enum.UserInputType.Keyboard then
-					bound = i.KeyCode
-					kb.Text = bound.Name
-					kb.TextColor3 = C.Accent
-					waiting = false
-					if onChange then
-						onChange(bound)
-					end
-				end
-			end)
-		end
-
-		local function addNumberInput(col, order, label, default, onChange)
-			local row = baseRow(col, order)
-			rowLabel(row, label)
-
-			local nb = Instance.new("Frame")
-			nb.Size = UDim2.fromOffset(80, 22)
-			nb.Position = UDim2.new(1, -88, 0.5, -11)
-			nb.BackgroundColor3 = C.BG3
-			nb.BorderSizePixel = 0
-			nb.ZIndex = 5
-			nb.Parent = row
-			rnd(nb, 4)
-			local ns = strk(nb, C.Border, 1)
-
-			local nt = Instance.new("TextBox")
-			nt.Size = UDim2.new(1, -8, 1, 0)
-			nt.Position = UDim2.fromOffset(4, 0)
-			nt.BackgroundTransparency = 1
-			nt.Text = tostring(default or 0)
-			nt.PlaceholderText = "0"
-			nt.PlaceholderColor3 = C.TextMut
-			nt.TextColor3 = C.TextPri
-			nt.TextSize = 12
-			nt.Font = Enum.Font.GothamBold
-			nt.TextXAlignment = Enum.TextXAlignment.Center
-			nt.ClearTextOnFocus = false
-			nt.ZIndex = 6
-			nt.Parent = nb
-			nt.Focused:Connect(function()
-				TweenService:Create(ns, TweenInfo.new(0.15), { Color = C.Accent, Thickness = 1.2 }):Play()
-			end)
-			nt.FocusLost:Connect(function()
-				TweenService:Create(ns, TweenInfo.new(0.15), { Color = C.Border, Thickness = 1 }):Play()
-				local n = tonumber(nt.Text)
-				if not n then
-					nt.Text = tostring(default or 0)
-					return
-				end
-				nt.Text = tostring(n)
-				if onChange then
-					onChange(n)
-				end
-			end)
-		end
-
-		local function addTextInput(col, order, label, ph, onChange)
-			local row = baseRow(col, order)
-			rowLabel(row, label)
-
-			local nb = Instance.new("Frame")
-			nb.Size = UDim2.fromOffset(120, 22)
-			nb.Position = UDim2.new(1, -128, 0.5, -11)
-			nb.BackgroundColor3 = C.BG3
-			nb.BorderSizePixel = 0
-			nb.ZIndex = 5
-			nb.Parent = row
-			rnd(nb, 4)
-			local ns = strk(nb, C.Border, 1)
-
-			local tb = Instance.new("TextBox")
-			tb.Size = UDim2.new(1, -8, 1, 0)
-			tb.Position = UDim2.fromOffset(4, 0)
-			tb.BackgroundTransparency = 1
-			tb.Text = ""
-			tb.PlaceholderText = ph or "..."
-			tb.PlaceholderColor3 = C.TextMut
-			tb.TextColor3 = C.TextPri
-			tb.TextSize = 11
-			tb.Font = Enum.Font.Gotham
-			tb.TextXAlignment = Enum.TextXAlignment.Left
-			tb.ClearTextOnFocus = false
-			tb.ZIndex = 6
-			tb.Parent = nb
-			tb.Focused:Connect(function()
-				TweenService:Create(ns, TweenInfo.new(0.15), { Color = C.Accent, Thickness = 1.2 }):Play()
-			end)
-			tb.FocusLost:Connect(function()
-				TweenService:Create(ns, TweenInfo.new(0.15), { Color = C.Border, Thickness = 1 }):Play()
-				if onChange then
-					onChange(tb.Text)
-				end
-			end)
-		end
-
-		local function addLabel(col, order, text)
-			local row = baseRow(col, order)
-			local l = Instance.new("TextLabel")
-			l.Size = UDim2.new(1, -20, 1, 0)
-			l.Position = UDim2.fromOffset(10, 0)
-			l.BackgroundTransparency = 1
-			l.Text = text
-			l.TextColor3 = C.TextMut
-			l.TextSize = 11
-			l.Font = Enum.Font.Gotham
-			l.TextXAlignment = Enum.TextXAlignment.Left
-			l.TextWrapped = true
-			l.ZIndex = 5
-			l.Parent = row
-			return l
-		end
-
-		local function addBadge(col, order, label, badgeTxt, badgeCol)
-			local row = baseRow(col, order)
-			rowLabel(row, label)
-			local bc = badgeCol or C.Accent
-
-			local badge = Instance.new("Frame")
-			badge.AutomaticSize = Enum.AutomaticSize.X
-			badge.Size = UDim2.new(0, 0, 0, 18)
-			badge.AnchorPoint = Vector2.new(1, 0.5)
-			badge.Position = UDim2.new(1, -10, 0.5, 0)
-			badge.BackgroundColor3 = Color3.new(bc.R * 0.12, bc.G * 0.12, bc.B * 0.12)
-			badge.BorderSizePixel = 0
-			badge.ZIndex = 5
-			badge.Parent = row
-			rnd(badge, 99)
-			local bst = Instance.new("UIStroke")
-			bst.Color = bc
-			bst.Thickness = 1
-			bst.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-			bst.Parent = badge
-			local bpad = Instance.new("UIPadding")
-			bpad.PaddingLeft = UDim.new(0, 7)
-			bpad.PaddingRight = UDim.new(0, 7)
-			bpad.Parent = badge
-			local bl = Instance.new("TextLabel")
-			bl.AutomaticSize = Enum.AutomaticSize.X
-			bl.Size = UDim2.new(0, 0, 1, 0)
-			bl.BackgroundTransparency = 1
-			bl.Text = badgeTxt
-			bl.TextColor3 = bc
-			bl.TextSize = 10
-			bl.Font = Enum.Font.GothamBold
-			bl.ZIndex = 6
-			bl.Parent = badge
-		end
-
 		local function addConfigsTab()
 			TABS[#TABS + 1] = "Configs"
 			TabPages["Configs"] = { L = makeScroll(LEFT), R = makeScroll(RIGHT) }
@@ -1638,23 +1607,17 @@ function SlateUI:CreateWindow(config)
 
 			addSection(CoL, 3, "config management")
 			addTextInput(CoL, 4, "Config Name", "Enter config name...", function(v)
-				if not ActiveConfig then
-					ActiveConfig = {}
-				end
+				if not ActiveConfig then ActiveConfig = {} end
 				ActiveConfig._name = v
 			end)
 
 			addButton(CoL, 5, "Save Config", "Save", function()
 				if ActiveConfig and ActiveConfig._name and ActiveConfig._name ~= "" then
 					local configToSave = {}
-					for k, v in pairs(ActiveConfig) do
-						configToSave[k] = v
-					end
+					for k, v in pairs(ActiveConfig) do configToSave[k] = v end
 					SavedConfigs[ActiveConfig._name] = configToSave
 					saveConfigsToFile()
-					if savedLabel then
-						savedLabel.Text = "Last Saved: " .. os.date("%H:%M:%S")
-					end
+					if savedLabel then savedLabel.Text = "Last Saved: " .. os.date("%H:%M:%S") end
 					showNotification("Config Saved", "Config '" .. ActiveConfig._name .. "' saved successfully.", "success")
 				else
 					showNotification("Error", "Enter a config name first.", "error")
@@ -1662,7 +1625,6 @@ function SlateUI:CreateWindow(config)
 			end)
 
 			addSection(CoR, 1, "saved configs")
-
 			local configList = getConfigList()
 			addDropdown(CoR, 2, "Load Config", configList, function(v)
 				if v == "No saved configs" then return end
